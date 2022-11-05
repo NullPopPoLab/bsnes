@@ -38,6 +38,16 @@
   variables:
     platform: macos
 
+.core-defs-ios-arm64:
+  extends: .core-defs
+  after_script:
+    - mv ${MAKEFILE_PATH}/out/${CORENAME}_libretro_ios.dylib ${CORENAME}_libretro_ios.dylib
+
+.core-defs-tvos-arm64:
+  extends: .core-defs
+  after_script:
+    - mv ${MAKEFILE_PATH}/out/${CORENAME}_libretro_tvos.dylib ${CORENAME}_libretro_tvos.dylib
+
 # Inclusion templates, required for the build to work
 include:
   ################################## DESKTOPS ################################
@@ -61,15 +71,27 @@ include:
   - project: 'libretro-infrastructure/ci-templates'
     file: '/osx-x64.yml'
 
+  # MacOS ARM 64-bit
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/osx-arm64.yml'
+
   ################################## CELLULAR ################################
   # Android
   - project: 'libretro-infrastructure/ci-templates'
     file: '/android-jni.yml'
 
+  # iOS
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/ios-arm64.yml'
+
   ################################## CONSOLES ################################
   # Nintendo Switch
   - project: 'libretro-infrastructure/ci-templates'
     file: '/libnx-static.yml'
+
+  # AppleTV / tvOS
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/tvos-arm64.yml'  
 
 # Stages for building
 stages:
@@ -116,6 +138,14 @@ libretro-build-osx-x64:
     - .libretro-osx-x64-make-default
     - .core-defs-osx
 
+# MacOS ARM 64-bit
+libretro-build-osx-arm64:
+  extends:
+    - .libretro-osx-arm64-make-default
+    - .core-defs-osx
+  script:
+    - make -C ${MAKEFILE_PATH} -f ${MAKEFILE} -j$NUMPROC platform=macos target=libretro binary=library local=false openmp=false compiler="c++ -std=c++17 -stdlib=libc++ -target arm64-apple-macos10.15 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+
 ################################### CELLULAR #################################
 # Android ARMv7a
 android-armeabi-v7a:
@@ -140,6 +170,22 @@ android-x86:
   extends:
     - .libretro-android-jni-x86
     - .core-defs
+
+# iOS
+libretro-build-ios-arm64:
+  extends:
+    - .libretro-ios-arm64-make-default
+    - .core-defs-ios-arm64
+  script:
+    - make -C ${MAKEFILE_PATH} -f ${MAKEFILE} -j$NUMPROC platform=ios-arm64 target=libretro binary=library local=false openmp=false compiler="clang++ -std=c++17 -stdlib=libc++ -arch arm64 -isysroot $(xcodebuild -version -sdk iphoneos Path)"
+
+# tvOS
+libretro-build-tvos-arm64:
+  extends:
+    - .libretro-tvos-arm64-make-default
+    - .core-defs-tvos-arm64
+  script:
+    - make -C ${MAKEFILE_PATH} -f ${MAKEFILE} -j$NUMPROC platform=tvos-arm64 target=libretro binary=library local=false openmp=false compiler="clang++ -std=c++17 -stdlib=libc++ -arch arm64 -isysroot $(xcodebuild -version -sdk appletvos Path)"
 
 ################################### CONSOLES #################################
 # Nintendo Switch

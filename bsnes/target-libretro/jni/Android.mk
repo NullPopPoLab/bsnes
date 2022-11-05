@@ -4,7 +4,7 @@ SRCDIR := $(LOCAL_PATH)/../../..
 
 INCFLAGS  := -I$(SRCDIR) -I$(SRCDIR)/bsnes
 COREFLAGS := -fomit-frame-pointer -ffast-math -D__LIBRETRO__ $(INCFLAGS)
-COREFLAGS += -DGB_INTERNAL -DDISABLE_DEBUGGER -DPLATFORM_ANDROID
+COREFLAGS += -DGB_INTERNAL -DGB_DISABLE_DEBUGGER -DGB_DISABLE_CHEATS -DPLATFORM_ANDROID -DGB_VERSION=\"0.14.7\"
 
 GIT_VERSION := " $(shell git rev-parse --short HEAD || echo unknown)"
 ifneq ($(GIT_VERSION)," unknown")
@@ -12,6 +12,7 @@ ifneq ($(GIT_VERSION)," unknown")
 endif
 
 SRCFILES := $(SRCDIR)/bsnes/target-libretro/libretro.cpp \
+				$(SRCDIR)/bsnes/target-libretro/program.cpp \
 				$(SRCDIR)/bsnes/emulator/emulator.cpp \
 				$(SRCDIR)/libco/libco.c \
 				$(SRCDIR)/bsnes/filter/filter.cpp \
@@ -39,6 +40,7 @@ SRCFILES := $(SRCDIR)/bsnes/target-libretro/libretro.cpp \
 				$(SRCDIR)/bsnes/gb/Core/printer.c \
 				$(SRCDIR)/bsnes/gb/Core/random.c \
 				$(SRCDIR)/bsnes/gb/Core/rewind.c \
+				$(SRCDIR)/bsnes/gb/Core/rumble.c \
 				$(SRCDIR)/bsnes/gb/Core/save_state.c \
 				$(SRCDIR)/bsnes/gb/Core/sgb.c \
 				$(SRCDIR)/bsnes/gb/Core/sm83_cpu.c \

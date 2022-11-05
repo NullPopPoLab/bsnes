@@ -37,8 +37,8 @@ const GB_cartridge_t GB_cart_defs[256] = {
     [0xFC] =
     {  GB_MBC5  , GB_CAMERA      , true , true , false, false}, // FCh  POCKET CAMERA
     {  GB_NO_MBC, GB_STANDARD_MBC, false, false, false, false}, // FDh  BANDAI TAMA5 (Todo: Not supported)
-    {  GB_HUC3  , GB_STANDARD_MBC, true , true , false, false}, // FEh  HuC3 (Todo: Mapper support only)
-    {  GB_HUC1  , GB_STANDARD_MBC, true , true , false, false}, // FFh  HuC1+RAM+BATTERY (Todo: No IR bindings)
+    {  GB_HUC3  , GB_STANDARD_MBC, true , true , true,  false}, // FEh  HuC3
+    {  GB_HUC1  , GB_STANDARD_MBC, true , true , false, false}, // FFh  HuC1+RAM+BATTERY
 };
 
 void GB_update_mbc_mappings(GB_gameboy_t *gb)
@@ -86,6 +86,9 @@ void GB_update_mbc_mappings(GB_gameboy_t *gb)
         case GB_MBC3:
             gb->mbc_rom_bank = gb->mbc3.rom_bank;
             gb->mbc_ram_bank = gb->mbc3.ram_bank;
+            if (!gb->is_mbc30) {
+                gb->mbc_rom_bank &= 0x7F;
+            }
             if (gb->mbc_rom_bank == 0) {
                 gb->mbc_rom_bank = 1;
             }
@@ -108,12 +111,24 @@ void GB_update_mbc_mappings(GB_gameboy_t *gb)
             gb->mbc_rom_bank = gb->huc3.rom_bank;
             gb->mbc_ram_bank = gb->huc3.ram_bank;
             break;
+        case GB_TPP1:
+            gb->mbc_rom_bank = gb->tpp1_rom_bank;
+            gb->mbc_ram_bank = gb->tpp1_ram_bank;
+            gb->mbc_ram_enable = (gb->tpp1_mode == 2) || (gb->tpp1_mode == 3);
+            break;
     }
 }
 
 void GB_configure_cart(GB_gameboy_t *gb)
 {
     gb->cartridge_type = &GB_cart_defs[gb->rom[0x147]];
+    if (gb->rom[0x147] == 0xbc &&
+        gb->rom[0x149] == 0xc1 &&
+        gb->rom[0x14a] == 0x65) {
+        static const GB_cartridge_t tpp1 = {GB_TPP1, GB_STANDARD_MBC, true, true, true, true};
+        gb->cartridge_type = &tpp1;
+        gb->tpp1_rom_bank = 1;
+    }
     
     if (gb->rom[0x147] == 0 && gb->rom_size > 0x8000) {
         GB_log(gb, "ROM header reports no MBC, but file size is over 32Kb. Assuming cartridge uses MBC3.\n");
@@ -122,18 +137,32 @@ void GB_configure_cart(GB_gameboy_t *gb)
     else if (gb->rom[0x147] != 0 && memcmp(gb->cartridge_type, &GB_cart_defs[0], sizeof(GB_cart_defs[0])) == 0) {
         GB_log(gb, "Cartridge type %02x is not yet supported.\n", gb->rom[0x147]);
     }
+    
+    if (gb->mbc_ram) {
+        free(gb->mbc_ram);
+        gb->mbc_ram = NULL;
+        gb->mbc_ram_size = 0;
+    }
 
     if (gb->cartridge_type->has_ram) {
         if (gb->cartridge_type->mbc_type == GB_MBC2) {
             gb->mbc_ram_size = 0x200;
         }
+        else if (gb->cartridge_type->mbc_type == GB_TPP1) {
+            if (gb->rom[0x152] >= 1 && gb->rom[0x152] <= 9) {
+                gb->mbc_ram_size = 0x2000 << (gb->rom[0x152] - 1);
+            }
+        }
         else {
-            static const int ram_sizes[256] = {0, 0x800, 0x2000, 0x8000, 0x20000, 0x10000};
+            static const unsigned ram_sizes[256] = {0, 0x800, 0x2000, 0x8000, 0x20000, 0x10000};
             gb->mbc_ram_size = ram_sizes[gb->rom[0x149]];
         }
-        gb->mbc_ram = malloc(gb->mbc_ram_size);
+        
+        if (gb->mbc_ram_size) {
+            gb->mbc_ram = malloc(gb->mbc_ram_size);
+        }
 
-        /* Todo: Some games assume unintialized MBC RAM is 0xFF. It this true for all cartridges types? */
+        /* Todo: Some games assume unintialized MBC RAM is 0xFF. It this true for all cartridge types? */
         memset(gb->mbc_ram, 0xFF, gb->mbc_ram_size);
     }
 
@@ -144,6 +173,13 @@ void GB_configure_cart(GB_gameboy_t *gb)
     if (gb->cartridge_type->mbc_type == GB_MBC1) {
         if (gb->rom_size >= 0x44000 && memcmp(gb->rom + 0x104, gb->rom + 0x40104, 0x30) == 0) {
             gb->mbc1_wiring = GB_MBC1M_WIRING;
+        }
+    }
+    
+    /* Detect MBC30 */
+    if (gb->cartridge_type->mbc_type == GB_MBC3) {
+        if (gb->rom_size > 0x200000 || gb->mbc_ram_size > 0x8000) {
+            gb->is_mbc30 = true;
         }
     }
     

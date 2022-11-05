@@ -70,9 +70,11 @@ ifeq ($(platform), unix)
       IS_X86 = 1
    endif
    ifneq ($(findstring Haiku,$(shell uname -s)),)
+   SHARED += -Wl,-export-dynamic
    CXXFLAGS += -fpermissive
-   endif
+   else
    LDFLAGS += -ldl
+   endif
 else ifeq ($(platform), osx)
    TARGET := $(TARGET_NAME)_libretro.dylib
    fpic := -fPIC
@@ -450,7 +452,8 @@ endif
 LDFLAGS += $(fpic) $(SHARED)
 FLAGS += $(fpic) $(NEW_GCC_FLAGS) $(INCFLAGS)
 
-FLAGS += $(ENDIANNESS_DEFINES) $(WARNINGS) $(CORE_DEFINE) -DSTDC_HEADERS -D__STDC_LIMIT_MACROS -D__LIBRETRO__ -DSFC_LAGFIX -DGB_INTERNAL -DDISABLE_DEBUGGER $(EXTRA_INCLUDES) $(SOUND_DEFINE)
+FLAGS += $(ENDIANNESS_DEFINES) $(WARNINGS) $(CORE_DEFINE) -DSTDC_HEADERS -D__STDC_LIMIT_MACROS -D__LIBRETRO__ -DSFC_LAGFIX -DGB_INTERNAL -DGB_DISABLE_DEBUGGER -DGB_DISABLE_CHEATS $(EXTRA_INCLUDES) $(SOUND_DEFINE)
+FLAGS += -DGB_VERSION=\"0.14.7\"
 
 CXXFLAGS += -std=c++17 $(FLAGS)
 CFLAGS   += $(FLAGS)

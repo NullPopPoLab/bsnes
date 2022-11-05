@@ -16,22 +16,25 @@ else ifeq ($(platform), libnx)
 	name := bsnes_libretro_libnx
 endif
 
-objects := libretro $(objects)
+objects := libretro program $(objects)
 objects := $(patsubst %,obj/%.o,$(objects))
 
 obj/libretro.o: target-libretro/libretro.cpp
+obj/program.o:  target-libretro/program.cpp
 
 all: $(objects)
 ifeq ($(platform),linux)
-	$(strip $(compiler) -o out/$(name).so -shared $(objects) -Wl,--no-undefined -Wl,--version-script=target-libretro/link.T -lgomp -Wl,-Bdynamic $(options))
+	$(strip $(compiler) -o out/bsnes_libretro.so -shared $(objects) -Wl,--no-undefined -Wl,--version-script=target-libretro/link.T -lgomp -Wl,-Bdynamic $(options))
+else ifeq ($(platform),haiku)
+	$(strip $(compiler) -o out/bsnes_libretro.so -shared $(objects) -Wl,--no-undefined -Wl,--version-script=target-libretro/link.T -lgomp -Wl,-Bdynamic $(options))
 else ifeq ($(platform),windows)
-	$(strip $(compiler) -o out/$(name).dll -shared $(objects) -Wl,--no-undefined -Wl,--version-script=target-libretro/link.T -lgomp -Wl,-Bdynamic $(options))
+	$(strip $(compiler) -o out/bsnes_libretro.dll -shared $(objects) -Wl,--no-undefined -Wl,--version-script=target-libretro/link.T -lgomp -Wl,-Bdynamic $(options))
 else ifeq ($(platform),libnx)
-	$(strip $(AR) rcs out/$(name).a $(objects))
+	$(strip $(AR) rcs out/bsnes_libretro_libnx.a $(objects))
 else ifeq ($(platform),macos)
-	$(strip $(compiler) -o out/$(name).dylib -shared $(objects) $(options))
-else ifeq ($(platform), ios-arm64)
-	$(strip c++ -arch arm64 -marm -miphoneos-version-min=11.0 -isysroot $(shell xcodebuild -version -sdk iphoneos Path) -o out/$(name)_ios.dylib -shared $(objects) -lpthread -ldl)
+	$(strip $(compiler) -o out/bsnes_libretro.dylib -shared $(objects) -lpthread -ldl)
+else ifeq ($(platform),ios-arm64)
+	$(strip c++ -arch arm64 -marm -miphoneos-version-min=11.0 -isysroot $(shell xcodebuild -version -sdk iphoneos Path) -o out/bsnes_libretro_ios.dylib -shared $(objects) -lpthread -ldl)
 else ifeq ($(platform), tvos-arm64)
-	$(strip c++ -arch arm64 -marm -mtvos-version-min=11.0 -isysroot $(shell xcodebuild -version -sdk appletvos Path) -o out/$(name)_tvos.dylib -shared $(objects) -lpthread -ldl)
+	$(strip c++ -arch arm64 -marm -mtvos-version-min=11.0 -isysroot $(shell xcodebuild -version -sdk appletvos Path) -o out/bsnes_libretro_tvos.dylib -shared $(objects) -lpthread -ldl)
 endif

@@ -5,8 +5,23 @@
 #include <stdbool.h>
 
 typedef struct GB_sgb_s GB_sgb_t;
+typedef struct {
+    union {
+        uint8_t tiles[0x100 * 8 * 4];
+        uint8_t tiles_legacy[0x100 * 8 * 8]; /* High nibble not used; TODO: Remove when breaking save-state compatibility! */
+    };
+    union {
+        struct {
+            uint16_t map[32 * 32];
+            uint16_t palette[16 * 4];
+        };
+        uint16_t raw_data[0x440];
+    };
+} GB_sgb_border_t;
 
 #ifdef GB_INTERNAL
+#define GB_SGB_INTRO_ANIMATION_LENGTH 200
+
 struct GB_sgb_s {
     uint8_t command[16 * 7];
     uint16_t command_write_index;
@@ -29,23 +44,15 @@ struct GB_sgb_s {
     uint8_t vram_transfer_countdown, transfer_dest;
     
     /* Border */
-    struct {
-        uint8_t tiles[0x100 * 8 * 8]; /* High nibble not used*/
-        union {
-            struct {
-                uint16_t map[32 * 32];
-                uint16_t palette[16 * 4];
-            };
-            uint16_t raw_data[0x440];
-        };
-    } border, pending_border;
+    GB_sgb_border_t border, pending_border;
     uint8_t border_animation;
     
     /* Colorization */
     uint16_t effective_palettes[4 * 4];
     uint16_t ram_palettes[4 * 512];
     uint8_t attribute_map[20 * 18];
-    uint8_t attribute_files[0xFE0];
+    uint8_t attribute_files[0xFD2];
+    uint8_t attribute_files_padding[0xFE0 - 0xFD2];
     
     /* Intro */
     int16_t intro_animation;
@@ -54,7 +61,9 @@ struct GB_sgb_s {
     uint8_t received_header[0x54];
     
     /* Multiplayer (cont) */
-    bool mlt_lock;
+    GB_PADDING(bool, mlt_lock);
+    
+    bool v14_3; // True on save states created on 0.14.3 or newer; Remove when breaking save state compatibility!
 };
 
 void GB_sgb_write(GB_gameboy_t *gb, uint8_t value);
